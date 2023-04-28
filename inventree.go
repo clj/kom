@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -27,7 +28,7 @@ func (p *InventreePlugin) Init(api KomPluginApi) error {
 	if err != nil {
 		return err
 	}
-	p.inventreeConfig.userName, err = api.ReadSetting("api_token")
+	p.inventreeConfig.apiToken, err = api.ReadSetting("api_token")
 	if err != nil {
 		var password string
 
@@ -43,6 +44,9 @@ func (p *InventreePlugin) Init(api KomPluginApi) error {
 		response, err := p.httpClient.Do(request)
 		if err != nil {
 			return err
+		}
+		if response.StatusCode != 200 {
+			return fmt.Errorf("unexpected status code %s", response.Status)
 		}
 
 		type Token struct {
