@@ -60,8 +60,9 @@ func (p *InventreePlugin) Init(api KomPluginApi) error {
 		}
 		p.inventreeConfig.apiToken = val.Token
 		api.WriteSetting("api_token", val.Token)
-		api.DeleteSetting("password")
 	}
+
+	api.DeleteSetting("password")
 
 	return nil
 }
