@@ -8,7 +8,9 @@ import (
 )
 
 type KomPlugin interface {
-	Init(KomPluginApi) error
+	Init(KomPluginApi, PluginArguments) error
+	ColumnNames() []string
+	GetParts() ([]map[string]string, error)
 }
 
 type KomPluginApi interface {
@@ -97,6 +99,8 @@ func (api *PluginApi) DeleteSetting(key string) error {
 
 func (api *PluginApi) Destroy() {}
 
+type PluginArguments map[string]string
+
 type KomModule struct {
 	sqliteApi *sqlite.ExtensionApi
 }
@@ -105,9 +109,29 @@ func (m *KomModule) Init(sqliteApi *sqlite.ExtensionApi) {
 	m.sqliteApi = sqliteApi
 }
 
+func maybeUnquote(literal string) string {
+	literal = strings.TrimSpace(literal)
+
+	if len(literal) < 2 {
+		return literal
+	}
+
+	if literal[0] == '\'' && literal[len(literal)-1] == '\'' {
+		return strings.ReplaceAll(literal[1:len(literal)-1], "''", "'")
+	}
+
+	if literal[0] == '"' && literal[len(literal)-1] == '"' {
+		return strings.ReplaceAll(literal[1:len(literal)-1], "\"\"", "\"\"")
+	}
+
+	return literal
+}
+
 func (m *KomModule) Connect(conn *sqlite.Conn, args []string, declare func(string) error) (_ sqlite.VirtualTable, err error) {
-	var table = &KomVirtualTable{}
+	table := &KomVirtualTable{}
 	pluginArgs := args[3:]
+	settingsTableName := ""
+	pluginArguments := make(PluginArguments)
 
 	// Values in args:
 	//
@@ -123,10 +147,9 @@ func (m *KomModule) Connect(conn *sqlite.Conn, args []string, declare func(strin
 	// to the module name in the CREATE VIRTUAL TABLE statement.
 	// From xCreate docs: https://www.sqlite.org/vtab.html#xcreate
 
-	var settingsTableName = ""
-
 	for i := range pluginArgs {
 		s := strings.SplitN(pluginArgs[i], "=", 2)
+		s[1] = maybeUnquote(s[1])
 		switch s[0] {
 		case "plugin":
 			if pluginMaker, ok := plugins[s[1]]; ok {
@@ -134,6 +157,8 @@ func (m *KomModule) Connect(conn *sqlite.Conn, args []string, declare func(strin
 			}
 		case "settings":
 			settingsTableName = s[1]
+		default:
+			pluginArguments[s[0]] = s[1]
 		}
 	}
 
@@ -152,11 +177,13 @@ func (m *KomModule) Connect(conn *sqlite.Conn, args []string, declare func(strin
 	if err := api.Init(m.sqliteApi, settingsTableName); err != nil {
 		return nil, err
 	}
-	if err = table.plugin.Init(api); err != nil {
+	if err = table.plugin.Init(api, pluginArguments); err != nil {
 		return nil, err
 	}
 
-	return table, declare("CREATE TABLE x(c1)")
+	columnNames := strings.Join(table.plugin.ColumnNames(), ",")
+
+	return table, declare(fmt.Sprintf("CREATE TABLE x(%s)", columnNames))
 }
 
 type KomVirtualTable struct {
@@ -164,27 +191,70 @@ type KomVirtualTable struct {
 	plugin KomPlugin
 }
 
-func (vt *KomVirtualTable) BestIndex(_ *sqlite.IndexInfoInput) (*sqlite.IndexInfoOutput, error) {
+func (vt *KomVirtualTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoOutput, error) {
 	return &sqlite.IndexInfoOutput{EstimatedCost: 1000000}, nil
 }
+
 func (vt *KomVirtualTable) Open() (_ sqlite.VirtualCursor, err error) {
-	return &KomCursor{}, nil
+
+	return &KomCursor{
+		plugin: vt.plugin,
+	}, nil
 }
-func (vt *KomVirtualTable) Disconnect() error { return nil }
+
+func (vt *KomVirtualTable) Disconnect() error {
+	return nil
+}
+
 func (vt *KomVirtualTable) Destroy() error {
+
 	vt.api.Destroy()
 	return vt.Disconnect()
 }
 
 type KomCursor struct {
+	plugin KomPlugin
+	parts  []map[string]string
+	rowId  int64
 }
 
-func (c *KomCursor) Next() error                                         { return sqlite.SQLITE_OK }
-func (c *KomCursor) Column(ctx *sqlite.VirtualTableContext, i int) error { return nil }
-func (c *KomCursor) Filter(int, string, ...sqlite.Value) error           { return sqlite.SQLITE_OK }
-func (c *KomCursor) Rowid() (int64, error)                               { return -1, sqlite.SQLITE_EMPTY }
-func (c *KomCursor) Eof() bool                                           { return true }
-func (c *KomCursor) Close() error                                        { return nil }
+func (c *KomCursor) Next() error {
+
+	c.rowId += 1
+
+	return sqlite.SQLITE_OK
+}
+
+func (c *KomCursor) Column(ctx *sqlite.VirtualTableContext, i int) error {
+
+	columns := c.plugin.ColumnNames()
+
+	ctx.ResultText(c.parts[c.rowId][columns[i]])
+
+	return nil
+}
+
+func (c *KomCursor) Filter(indexNumber int, indexString string, values ...sqlite.Value) error {
+
+	parts, err := c.plugin.GetParts()
+	if err != nil {
+		return err
+	}
+	c.parts = parts
+	c.rowId = 0
+
+	return sqlite.SQLITE_OK
+}
+
+func (c *KomCursor) Rowid() (int64, error) {
+	return c.rowId, nil
+}
+func (c *KomCursor) Eof() bool {
+	return c.rowId >= int64(len(c.parts))
+}
+func (c *KomCursor) Close() error {
+	return nil
+}
 
 func init() {
 	sqlite.Register(func(api *sqlite.ExtensionApi) (sqlite.ErrorCode, error) {
