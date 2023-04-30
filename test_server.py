@@ -1,6 +1,7 @@
 from http.server import BaseHTTPRequestHandler
 from http.server import HTTPServer
 import json
+from urllib.parse import parse_qs
 
 
 class MockHTTPRequestHandler(BaseHTTPRequestHandler):
@@ -9,7 +10,12 @@ class MockHTTPRequestHandler(BaseHTTPRequestHandler):
         if content_length := self.headers['Content-Length']:
             data = self.rfile.read(int(content_length))
 
-        fn_name = self.path.split('?')[0].strip('/').replace('/', '_')
+        if '?' in self.path:
+            path, args = self.path.split('?')
+        else:
+            path = self.path
+            args = ""
+        fn_name = path.strip('/').replace('/', '_')
         fn = getattr(self, fn_name)
         if not fn:
             self.send_response(404)
@@ -21,14 +27,14 @@ class MockHTTPRequestHandler(BaseHTTPRequestHandler):
         self.send_header('Content-type', 'application/json')
         self.end_headers()
 
-        self.wfile.write(json.dumps(fn(data)).encode('utf8'))
+        self.wfile.write(json.dumps(fn(data, parse_qs(args))).encode('utf8'))
 
-    def api_user_token(self, _):
+    def api_user_token(self, _, __):
         return {
             "token": "0123456789012345678901234567890123456789"
         }
 
-    def api_part_category(self, _):
+    def api_part_category(self, _, __):
         return json.loads("""
             [
                 {
@@ -94,8 +100,8 @@ class MockHTTPRequestHandler(BaseHTTPRequestHandler):
             ]
         """)
 
-    def api_part(self, _):
-        return json.loads("""
+    def api_part(self, _, __):
+        parts = json.loads("""
         [
             {
                     "active": true,
@@ -279,6 +285,14 @@ class MockHTTPRequestHandler(BaseHTTPRequestHandler):
                 }
             ]
         """)
+
+        return parts
+
+    def api_part_30(self, _, __):
+        for part in self.api_part(_, __):
+            if part['pk'] == 30:
+                return part
+
 
 if __name__ == "__main__":
     server_address = ('', 45454)

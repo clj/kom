@@ -9,7 +9,7 @@ import (
 )
 
 type InventreePlugin struct {
-	// Globalish stuff
+	// Globalish stuff?
 	httpClient      *http.Client
 	inventreeConfig struct {
 		server   string
@@ -17,7 +17,7 @@ type InventreePlugin struct {
 		apiToken string
 	}
 	categoryMapping map[string]int
-	// Per table stuff
+	// Per table stuff?
 	categories []int
 	defaults   struct {
 		symbol    string
@@ -152,28 +152,46 @@ func (p *InventreePlugin) Init(api KomPluginApi, args PluginArguments) error {
 }
 
 func (p *InventreePlugin) ColumnNames() []string {
-	return []string{"PK", "IPN", "Description", "Keywords", "Symbols", "Footprints"}
+	return []string{"PK", "IPN", "Name", "Description", "Keywords", "Symbols", "Footprints"}
 }
 
-func (p *InventreePlugin) GetParts() ([]map[string]string, error) {
+func (p *InventreePlugin) CanFilter(column string) bool {
+	return column == "PK"
+}
+
+func (p *InventreePlugin) GetParts(pkValue *Value) ([]map[string]string, error) {
 	type part struct {
 		Pk          int    `json:"pk"`
 		Ipn         string `json:"IPN"`
-		Keywords    string `json:"keywords"`
+		Name        string `json:"name"`
 		Description string `json:"description"`
-	}
-	args := make(map[string]string)
-	args["category"] = strconv.Itoa(p.categories[0]) // XXX: disallow multiple categories, or make multiple queries
-	var parts = []part{}
-	if err := p.apiGet("/api/part/", args, &parts); err != nil {
-		return nil, err
+		Keywords    string `json:"keywords"`
 	}
 
+	var parts = []part{}
+
+	if pkValue != nil {
+		var part = part{}
+
+		if err := p.apiGet(fmt.Sprintf("/api/part/%s/", pkValue.Text()), nil, &part); err != nil {
+			return nil, err
+		}
+		parts = append(parts, part)
+	} else {
+
+		args := make(map[string]string)
+		args["category"] = strconv.Itoa(p.categories[0]) // XXX: possible to filter multiple at the same time? or disallow multiple categories, or make multiple queries
+
+		if err := p.apiGet("/api/part/", args, &parts); err != nil {
+			return nil, err
+		}
+	}
 	var result []map[string]string
 	for _, part := range parts {
 		partResult := make(map[string]string)
 		partResult["PK"] = strconv.Itoa(part.Pk) // XXX: other types than string in here
 		partResult["IPN"] = part.Ipn
+		partResult["Name"] = part.Name
 		partResult["Keywords"] = part.Keywords
 		partResult["Description"] = part.Description
 		partResult["Symbols"] = p.defaults.symbol

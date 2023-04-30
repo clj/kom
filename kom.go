@@ -1,16 +1,22 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
+	"os"
 	"strings"
 
 	"go.riyazali.net/sqlite"
 )
 
+type Value = sqlite.Value
+
 type KomPlugin interface {
 	Init(KomPluginApi, PluginArguments) error
 	ColumnNames() []string
-	GetParts() ([]map[string]string, error)
+	GetParts(*Value) ([]map[string]string, error)
+	CanFilter(string) bool
 }
 
 type KomPluginApi interface {
@@ -192,7 +198,33 @@ type KomVirtualTable struct {
 }
 
 func (vt *KomVirtualTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoOutput, error) {
-	return &sqlite.IndexInfoOutput{EstimatedCost: 1000000}, nil
+	output := &sqlite.IndexInfoOutput{EstimatedCost: 1000000, IndexNumber: -1}
+	columns := vt.plugin.ColumnNames()
+
+	for _, constraint := range info.Constraints {
+		if !constraint.Usable || constraint.Op != sqlite.INDEX_CONSTRAINT_EQ {
+			output.ConstraintUsage = append(output.ConstraintUsage, &sqlite.ConstraintUsage{
+				ArgvIndex: 0,
+				Omit:      false,
+			})
+
+			continue
+		}
+
+		if vt.plugin.CanFilter(columns[constraint.ColumnIndex]) {
+			output.EstimatedCost = 100
+			output.EstimatedRows = 1
+			output.IndexNumber = constraint.ColumnIndex
+			output.ConstraintUsage = append(output.ConstraintUsage, &sqlite.ConstraintUsage{
+				ArgvIndex: 1,
+				Omit:      false,
+			})
+
+			return output, nil
+		}
+
+	}
+	return output, nil
 }
 
 func (vt *KomVirtualTable) Open() (_ sqlite.VirtualCursor, err error) {
@@ -235,8 +267,11 @@ func (c *KomCursor) Column(ctx *sqlite.VirtualTableContext, i int) error {
 }
 
 func (c *KomCursor) Filter(indexNumber int, indexString string, values ...sqlite.Value) error {
-
-	parts, err := c.plugin.GetParts()
+	var pkValue *sqlite.Value = nil
+	if len(values) != 0 {
+		pkValue = &values[0]
+	}
+	parts, err := c.plugin.GetParts((*Value)(pkValue))
 	if err != nil {
 		return err
 	}

@@ -11,4 +11,5 @@ CREATE VIRTUAL TABLE Resistors USING kom(plugin=inventree, settings=settings, ca
 .schema Passives
 SELECT * FROM Passives;
 SELECT * FROM Passives LIMIT 1;
+SELECT * FROM Passives WHERE PK=30;
 SELECT * FROM settings;
