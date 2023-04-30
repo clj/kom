@@ -1,7 +1,7 @@
 .print "Running test script:"
 .bail on
 .echo on
-.load kom
+.load ./kom
 CREATE TABLE settings (key, value);
 INSERT INTO settings VALUES ("server", "http://localhost:45454");
 INSERT INTO settings VALUES ("username", "username");

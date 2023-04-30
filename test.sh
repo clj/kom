@@ -4,7 +4,7 @@ set -e
 set -x
 
 ./build.sh
-trap "trap - SIGTERM && kill -- -$$" SIGINT SIGTERM EXIT
 python3 test_server.py &
+trap "trap - SIGTERM && kill -- $!" SIGINT SIGTERM EXIT
 sleep 1
 sqlite3 < test.sql

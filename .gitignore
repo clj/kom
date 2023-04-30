@@ -1,2 +1,4 @@
 *.dylib
 *.so
+
+dist/
