@@ -1,4 +1,4 @@
 *.dylib
 *.so
-
+.DS_Store
 dist/
