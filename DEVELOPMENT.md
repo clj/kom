@@ -47,3 +47,13 @@ Figuring out exactly how BestIndex and Filter interact with each other was sligh
         * Only focused on building extensions
     * https://github.com/mattn/go-sqlite3
         * SQLite3 driver that also has support for building extensions
+
+## Getting Rid of SQLite3
+
+It would be possible to get rid of SQLite3 by directly implementing an ODBC driver which translates the two types of query currently issued by KiCad to API calls into Inventree or other apps. Finding resources and examples of implementing a simple ODBC driver is considerably harder than what I have accomplished here.
+
+The following is a list of resources that might help should somebody actually want to do this:
+
+* [Developing an ODBC Driver](https://learn.microsoft.com/en-us/sql/odbc/reference/develop-driver/developing-an-odbc-driver?view=sql-server-ver16)
+* [SQLiteODBC source code](https://ch-werner.homepage.t-online.de/sqliteodbc/html/sqlite3odbc_8c-source.html)
+* [A old Windows based ODBC driver](https://github.com/LukeMauldin/lodbc)
