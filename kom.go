@@ -7,6 +7,12 @@ import (
 	"go.riyazali.net/sqlite"
 )
 
+var (
+	Version   string = "dev"
+	Commit    string = "?"
+	BuildDate string = "?"
+)
+
 type Value = sqlite.Value
 
 type KomPlugin interface {
@@ -288,11 +294,36 @@ func (c *KomCursor) Close() error {
 	return nil
 }
 
+type VersionFn struct{}
+
+func (m *VersionFn) Args() int           { return -1 }
+func (m *VersionFn) Deterministic() bool { return true }
+func (m *VersionFn) Apply(ctx *sqlite.Context, values ...sqlite.Value) {
+	if len(values) == 1 {
+		switch values[0].Text() {
+		case "version":
+			ctx.ResultText(Version)
+			return
+		case "sha":
+			ctx.ResultText(Commit)
+			return
+		case "build_date":
+			ctx.ResultText(BuildDate)
+			return
+		}
+	}
+
+	ctx.ResultText(fmt.Sprintf("version: %s sha: %s build_date: %s", Version, Commit, BuildDate))
+}
+
 func init() {
 	sqlite.Register(func(api *sqlite.ExtensionApi) (sqlite.ErrorCode, error) {
 		module := &KomModule{}
 		module.Init(api)
 		if err := api.CreateModule("kom", module); err != nil {
+			return sqlite.SQLITE_ERROR, err
+		}
+		if err := api.CreateFunction("kom_version", &VersionFn{}); err != nil {
 			return sqlite.SQLITE_ERROR, err
 		}
 		return sqlite.SQLITE_OK, nil

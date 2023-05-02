@@ -13,3 +13,7 @@ SELECT * FROM Passives;
 SELECT * FROM Passives LIMIT 1;
 SELECT * FROM Passives WHERE PK=30;
 SELECT * FROM settings;
+select kom_version();
+select kom_version("version");
+select kom_version("sha");
+select kom_version("build_date");
