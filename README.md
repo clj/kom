@@ -75,7 +75,7 @@ You can update these values at any time, though you will have to restart KiCad t
 Create one or more database libraries:
 
 ```sql
-CREATE VIRTUAL TABLE Resistors USING kom(plugin="inventree", settings="settings", categories="Resistors", default_symbol="Device:R", default_footprint="Resistor_SMD:R_0805_2012Metric", fields="Category:(int)category, Active:(int)active=(int)0, FullName:full_name"));
+CREATE VIRTUAL TABLE Resistors USING kom(plugin="inventree", settings="settings", categories="Resistors", default_symbol="Device:R", default_footprint="Resistor_SMD:R_0805_2012Metric", fields="Category:(int)category, Active:(int)active=(int)0, FullName:full_name, ClampingVoltage:parameters.Clamping Voltage"));
 ```
 
 Available options:
@@ -125,8 +125,9 @@ Where:
 The `source` field can access nested structures (mappings only) can be accessed using dot notation, e.g.: `metadata.kicad.footprints`. Use one of the following key prefixes to access other information:
 
 * `metadata.` - access data from the metadata table.
+* `parameters.` - access part parameters.
 
-When none of these prefixes are used, keys are looked up in the data returned by the Parts API.
+When none of these prefixes are used, keys are looked up in the data returned by the Parts API. Metadata and parameters are only fetched when KiCad requests data for a specific part (by using a primary key constraint).
 
 ### KiCad Configuration
 

@@ -8,7 +8,7 @@ INSERT INTO settings VALUES ("username", "username");
 INSERT INTO settings VALUES ("password", "password");
 CREATE VIRTUAL TABLE Passives USING kom(plugin=inventree, settings=settings, categories="Capacitors,Resistors", default_symbol="Device:R", default_footprint="SMD:0506");
 CREATE VIRTUAL TABLE Resistors USING kom(plugin=inventree, settings=settings, categories="Resistors", default_symbol="Device:R", default_footprint="Resistor_SMD:R_0805_2012Metric");
-CREATE VIRTUAL TABLE Capacitors USING kom(plugin=inventree, settings=settings, categories="Capacitors", default_symbol="Device:C", fields="Category:(int)category, Active:(int)active=(int)0, FullName:full_name, Symbols:metadata.kicad.symbols=XXX, Footprints:metadata.kicad.footprints=YYY");
+CREATE VIRTUAL TABLE Capacitors USING kom(plugin=inventree, settings=settings, categories="Capacitors", default_symbol="Device:C", fields="Category:(int)category, Active:(int)active=(int)0, FullName:full_name, Symbols:metadata.kicad.symbols=XXX, Footprints:metadata.kicad.footprints=YYY, ClampingVoltage:parameters.Clamping Voltage");
 .schema Passives
 SELECT * FROM Passives;
 SELECT * FROM Passives LIMIT 1;

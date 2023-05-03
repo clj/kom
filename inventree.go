@@ -25,10 +25,11 @@ type InventreePlugin struct {
 	}
 	categoryMapping map[string]int
 	// Per table stuff?
-	categories    []int
-	fieldMappings map[string]fieldMapping
-	fields        []string
-	usesMetadata  bool
+	categories     []int
+	fieldMappings  map[string]fieldMapping
+	fields         []string
+	usesMetadata   bool
+	usesParameters bool
 }
 
 func (p *InventreePlugin) updateCategoryMapping() error {
@@ -64,6 +65,8 @@ func (p *InventreePlugin) addField(name string, mapping fieldMapping) {
 	p.fieldMappings[name] = mapping
 	if mapping.source[0] == "metadata" {
 		p.usesMetadata = true
+	} else if mapping.source[0] == "parameters" {
+		p.usesParameters = true
 	}
 	for _, v := range p.fields {
 		if v == name {
@@ -216,6 +219,18 @@ func parseFields(fields string) (map[string]fieldMapping, error) {
 	return result, nil
 }
 
+func mangleParameters(params []map[string]any) map[string]any {
+	result := make(map[string]any)
+	for _, param := range params {
+		name := param["template_detail"].(map[string]any)["name"].(string)
+		data := param["data"].(string)
+
+		result[name] = data
+	}
+
+	return result
+}
+
 func (p *InventreePlugin) ColumnNames() []string {
 	return p.fields
 }
@@ -229,6 +244,7 @@ func (p *InventreePlugin) GetParts(pkValue any) (Parts, error) {
 
 	var parts []part
 	var partMetadata map[string]any
+	var partParameters map[string]any
 
 	if pkValue != nil {
 		var part = part{}
@@ -242,6 +258,19 @@ func (p *InventreePlugin) GetParts(pkValue any) (Parts, error) {
 			if err := p.apiGet(fmt.Sprintf("/api/part/%v/metadata", pkValue), nil, &partMetadata); err != nil {
 				return nil, err
 			}
+		}
+
+		if p.usesParameters {
+			var rawPartParameters []map[string]any
+			args := make(map[string]string)
+			value, _ := Convert(pkValue, "string")
+			args["part"] = value.(string)
+
+			if err := p.apiGet("/api/part/parameter/", nil, &rawPartParameters); err != nil {
+				return nil, err
+			}
+
+			partParameters = mangleParameters(rawPartParameters)
 		}
 	} else {
 		args := make(map[string]string)
@@ -263,6 +292,14 @@ func (p *InventreePlugin) GetParts(pkValue any) (Parts, error) {
 			case "metadata":
 				value = partMetadata
 				for _, key := range mapping.source {
+					value, ok = value.(map[string]any)[key]
+					if !ok {
+						break
+					}
+				}
+			case "parameters":
+				value = partParameters
+				for _, key := range mapping.source[1:] {
 					value, ok = value.(map[string]any)[key]
 					if !ok {
 						break

@@ -305,6 +305,36 @@ class MockHTTPRequestHandler(BaseHTTPRequestHandler):
             }
         """)
 
+    def api_part_parameter(self, _, __):
+        return json.loads("""
+            [
+                {
+                    "pk": 1,
+                    "part": 1,
+                    "template": 3,
+                    "template_detail": {
+                        "pk": 3,
+                        "name": "Breakdown Voltage",
+                        "units": "V",
+                        "description": ""
+                    },
+                    "data": "6V"
+                },
+                {
+                    "pk": 2,
+                    "part": 1,
+                    "template": 5,
+                    "template_detail": {
+                        "pk": 5,
+                        "name": "Clamping Voltage",
+                        "units": "V",
+                        "description": ""
+                    },
+                    "data": "17V"
+                }
+            ]
+        """)
+
 
 if __name__ == "__main__":
     server_address = ('', 45454)
