@@ -16,11 +16,11 @@ Install [unixODBC](https://www.unixodbc.org), [SQLiteODBC](https://ch-werner.hom
 $ brew install unixodbc sqliteodbc sqlite3
 ```
 
-You most likely have to install SQLite3 from homebew, even though macOS already comes with SQLite3. The version that comes as standard with the OS does not have the ability to load modules.
+You most likely have to install SQLite3 from homebew, even though macOS already comes with SQLite3. This is because the  version that comes as standard with the OS does not have the ability to load modules.
 
 The homebrew SQLite3 command won't run by default. See `brew info sqlite3` for instructions on how to make it the default command, or use the full path, e.g.: `/usr/local/opt/sqlite/bin/sqlite3` when setting up the database below.
 
-Download the latest release from [Releases](https://github.com/clj/kom/releases):
+Download the latest kicad-odbc-middleware release from [Releases](https://github.com/clj/kom/releases):
 
 * For Intel based Macs:
     * kicad-odbc-middleware-**macos**-**amd64**-VERSION.zip
