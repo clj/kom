@@ -267,7 +267,7 @@ func (p *InventreePlugin) GetParts(pkValue any) (Parts, error) {
 
 			if p.usesMetadata {
 				g.Go(func() error {
-					if err := p.apiGet(fmt.Sprintf("/api/part/%v/metadata", pkValue), nil, &partMetadata); err != nil {
+					if err := p.apiGet(fmt.Sprintf("/api/part/%v/metadata/", pkValue), nil, &partMetadata); err != nil {
 						return err
 					}
 
