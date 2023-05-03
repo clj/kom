@@ -8,6 +8,12 @@ import (
 	"strings"
 )
 
+type fieldMapping struct {
+	source       string
+	typ          string
+	defaultValue any
+}
+
 type InventreePlugin struct {
 	// Globalish stuff?
 	httpClient      *http.Client
@@ -18,11 +24,8 @@ type InventreePlugin struct {
 	}
 	categoryMapping map[string]int
 	// Per table stuff?
-	categories []int
-	defaults   struct {
-		symbol    string
-		footprint string
-	}
+	categories    []int
+	fieldMappings map[string]fieldMapping
 }
 
 func (p *InventreePlugin) updateCategoryMapping() error {
@@ -145,9 +148,15 @@ func (p *InventreePlugin) Init(api KomPluginApi, args PluginArguments) error {
 		return err
 	}
 
-	p.defaults.symbol = args["default_symbol"]
-	p.defaults.footprint = args["default_footprint"]
-
+	p.fieldMappings = map[string]fieldMapping{
+		"PK":          {source: "pk"},
+		"IPN":         {source: "IPN"},
+		"Name":        {source: "name"},
+		"Keywords":    {source: "keywords"},
+		"Description": {source: "description"},
+		"Symbols":     {source: "symbols", defaultValue: args["default_symbol"]},
+		"Footprints":  {source: "footprints", defaultValue: args["default_footprint"]},
+	}
 	return nil
 }
 
@@ -160,15 +169,8 @@ func (p *InventreePlugin) CanFilter(column string) bool {
 }
 
 func (p *InventreePlugin) GetParts(pkValue any) (Parts, error) {
-	type part struct {
-		Pk          int    `json:"pk"`
-		Ipn         string `json:"IPN"`
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		Keywords    string `json:"keywords"`
-	}
-
-	var parts = []part{}
+	type part map[string]any
+	var parts []part
 
 	if pkValue != nil {
 		var part = part{}
@@ -178,7 +180,6 @@ func (p *InventreePlugin) GetParts(pkValue any) (Parts, error) {
 		}
 		parts = append(parts, part)
 	} else {
-
 		args := make(map[string]string)
 		args["category"] = strconv.Itoa(p.categories[0]) // XXX: possible to filter multiple at the same time? or disallow multiple categories, or make multiple queries
 
@@ -186,16 +187,18 @@ func (p *InventreePlugin) GetParts(pkValue any) (Parts, error) {
 			return nil, err
 		}
 	}
+
 	var result Parts
 	for _, part := range parts {
 		partResult := make(Part)
-		partResult["PK"] = part.Pk
-		partResult["IPN"] = part.Ipn
-		partResult["Name"] = part.Name
-		partResult["Keywords"] = part.Keywords
-		partResult["Description"] = part.Description
-		partResult["Symbols"] = p.defaults.symbol
-		partResult["Footprints"] = p.defaults.footprint
+		for field, mapping := range p.fieldMappings {
+			value, ok := part[mapping.source]
+			if ok {
+				partResult[field] = value
+			} else {
+				partResult[field] = mapping.defaultValue
+			}
+		}
 
 		result = append(result, partResult)
 	}
