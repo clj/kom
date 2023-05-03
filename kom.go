@@ -13,12 +13,13 @@ var (
 	BuildDate string = "?"
 )
 
-type Value = sqlite.Value
+type Part map[string]any
+type Parts []Part
 
 type KomPlugin interface {
 	Init(KomPluginApi, PluginArguments) error
 	ColumnNames() []string
-	GetParts(*Value) ([]map[string]string, error)
+	GetParts(any) (Parts, error)
 	CanFilter(string) bool
 }
 
@@ -31,6 +32,19 @@ type KomPluginApi interface {
 type PluginApi struct {
 	settingsTableName string
 	sqliteApi         *sqlite.ExtensionApi
+}
+
+func GetValue(value sqlite.Value) any {
+	switch value.Type() {
+	case sqlite.SQLITE_INTEGER:
+		return value.Int64()
+	case sqlite.SQLITE_FLOAT:
+		return value.Float()
+	case sqlite.SQLITE_TEXT:
+		return value.Text()
+	default:
+		panic(fmt.Sprintf("Unknown type %s", value.Type().String()))
+	}
 }
 
 func (api *PluginApi) Init(sqliteApi *sqlite.ExtensionApi, settingsTableName string) error {
@@ -249,7 +263,7 @@ func (vt *KomVirtualTable) Destroy() error {
 
 type KomCursor struct {
 	plugin KomPlugin
-	parts  []map[string]string
+	parts  Parts
 	rowId  int64
 }
 
@@ -264,17 +278,28 @@ func (c *KomCursor) Column(ctx *sqlite.VirtualTableContext, i int) error {
 
 	columns := c.plugin.ColumnNames()
 
-	ctx.ResultText(c.parts[c.rowId][columns[i]])
+	switch value := c.parts[c.rowId][columns[i]].(type) {
+	case int:
+		ctx.ResultInt(value)
+	case int64:
+		ctx.ResultInt64(value)
+	case float64:
+		ctx.ResultFloat(value)
+	case string:
+		ctx.ResultText(value)
+	default:
+		return fmt.Errorf("unknown type: %T", value)
+	}
 
 	return nil
 }
 
 func (c *KomCursor) Filter(indexNumber int, indexString string, values ...sqlite.Value) error {
-	var pkValue *sqlite.Value = nil
+	var pkValue any = nil
 	if len(values) != 0 {
-		pkValue = &values[0]
+		pkValue = GetValue(values[0])
 	}
-	parts, err := c.plugin.GetParts((*Value)(pkValue))
+	parts, err := c.plugin.GetParts(pkValue)
 	if err != nil {
 		return err
 	}

@@ -159,7 +159,7 @@ func (p *InventreePlugin) CanFilter(column string) bool {
 	return column == "PK"
 }
 
-func (p *InventreePlugin) GetParts(pkValue *Value) ([]map[string]string, error) {
+func (p *InventreePlugin) GetParts(pkValue any) (Parts, error) {
 	type part struct {
 		Pk          int    `json:"pk"`
 		Ipn         string `json:"IPN"`
@@ -173,7 +173,7 @@ func (p *InventreePlugin) GetParts(pkValue *Value) ([]map[string]string, error) 
 	if pkValue != nil {
 		var part = part{}
 
-		if err := p.apiGet(fmt.Sprintf("/api/part/%s/", pkValue.Text()), nil, &part); err != nil {
+		if err := p.apiGet(fmt.Sprintf("/api/part/%v/", pkValue), nil, &part); err != nil {
 			return nil, err
 		}
 		parts = append(parts, part)
@@ -186,10 +186,10 @@ func (p *InventreePlugin) GetParts(pkValue *Value) ([]map[string]string, error) 
 			return nil, err
 		}
 	}
-	var result []map[string]string
+	var result Parts
 	for _, part := range parts {
-		partResult := make(map[string]string)
-		partResult["PK"] = strconv.Itoa(part.Pk) // XXX: other types than string in here
+		partResult := make(Part)
+		partResult["PK"] = part.Pk
 		partResult["IPN"] = part.Ipn
 		partResult["Name"] = part.Name
 		partResult["Keywords"] = part.Keywords
