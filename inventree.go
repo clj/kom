@@ -26,6 +26,7 @@ type InventreePlugin struct {
 	// Per table stuff?
 	categories    []int
 	fieldMappings map[string]fieldMapping
+	fields        []string
 }
 
 func (p *InventreePlugin) updateCategoryMapping() error {
@@ -55,6 +56,17 @@ func (p *InventreePlugin) updateCategories(categories []string) error {
 	}
 
 	return nil
+}
+
+func (p *InventreePlugin) addField(name string, mapping fieldMapping) {
+	p.fieldMappings[name] = mapping
+	for _, v := range p.fields {
+		if v == name {
+			return
+		}
+	}
+
+	p.fields = append(p.fields, name)
 }
 
 func (p *InventreePlugin) apiGet(resource string, args map[string]string, result any) error {
@@ -148,20 +160,20 @@ func (p *InventreePlugin) Init(api KomPluginApi, args PluginArguments) error {
 		return err
 	}
 
-	p.fieldMappings = map[string]fieldMapping{
-		"PK":          {source: "pk"},
-		"IPN":         {source: "IPN"},
-		"Name":        {source: "name"},
-		"Keywords":    {source: "keywords"},
-		"Description": {source: "description"},
-		"Symbols":     {source: "symbols", defaultValue: args["default_symbol"]},
-		"Footprints":  {source: "footprints", defaultValue: args["default_footprint"]},
-	}
+	p.fieldMappings = make(map[string]fieldMapping)
+	p.addField("PK", fieldMapping{source: "pk"})
+	p.addField("IPN", fieldMapping{source: "IPN"})
+	p.addField("Name", fieldMapping{source: "name"})
+	p.addField("Keywords", fieldMapping{source: "keywords"})
+	p.addField("Description", fieldMapping{source: "description"})
+	p.addField("Symbols", fieldMapping{source: "symbols", defaultValue: args["default_symbol"]})
+	p.addField("Footprints", fieldMapping{source: "footprints", defaultValue: args["default_footprint"]})
+
 	return nil
 }
 
 func (p *InventreePlugin) ColumnNames() []string {
-	return []string{"PK", "IPN", "Name", "Description", "Keywords", "Symbols", "Footprints"}
+	return p.fields
 }
 
 func (p *InventreePlugin) CanFilter(column string) bool {
