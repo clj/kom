@@ -75,7 +75,7 @@ You can update these values at any time, though you will have to restart KiCad t
 Create one or more database libraries:
 
 ```sql
-CREATE VIRTUAL TABLE Resistors USING kom(plugin="inventree", settings="settings", categories="Resistors", default_symbol="Device:R", default_footprint="Resistor_SMD:R_0805_2012Metric");
+CREATE VIRTUAL TABLE Resistors USING kom(plugin="inventree", settings="settings", categories="Resistors", default_symbol="Device:R", default_footprint="Resistor_SMD:R_0805_2012Metric", fields="Category:(int)category, Active:(int)active=(int)0, FullName:full_name"));
 ```
 
 Available options:
@@ -93,6 +93,9 @@ Options specific to the **inventree** plugin:
     * The default symbol to return if no symbol is configured for a part
 * `default_footprint` (optional):
     * The default footprint to return if no symbol is configured for a part
+* `fields` (optional):
+    * Define one or more additional fields to expose to KiCad, or redefine the default fields
+    * Default fields are: PK, IPN, Name, Keywords, Description, Symbols, Footprints
 
 If you need to reconfigure a table, simply `DROP TABLE ____` and recreate it with the desired options.
 
@@ -101,6 +104,23 @@ If you need to reconfigure a table, simply `DROP TABLE ____` and recreate it wit
 * You have to configure a default_symbol to get any sensible behaviour at the moment
 * It is not (currently) possible for a part to have different symbol than the default
 * Despite the configuration option `categories` being plural, only one category can be specified at a time for a table currently
+
+
+#### Field Definitions
+
+Fields are defined as a comma separated list of field definitions matching the following format:
+
+```
+destination:(type)source=(default_type)default
+```
+
+Where:
+
+* `destination` - field name exposed to KiCad
+* `source` - field name returned by the InvenTree API
+* `type` - SQL type (int, float, string) to convert the returned value to
+* `default` - default value to return if the field is not present in InvenTree response
+* `default_type` - the type of the default value if it should not be a string
 
 ### KiCad Configuration
 

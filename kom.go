@@ -54,8 +54,10 @@ func Convert(value any, t string) (any, error) {
 	case "int":
 	case "float":
 	case "string":
+	case "":
+		return value, nil
 	default:
-		return nil, fmt.Errorf("Invalid destination type %s", t)
+		return nil, fmt.Errorf("invalid destination type %s", t)
 
 	}
 

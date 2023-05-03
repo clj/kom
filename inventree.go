@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -161,7 +162,7 @@ func (p *InventreePlugin) Init(api KomPluginApi, args PluginArguments) error {
 	}
 
 	p.fieldMappings = make(map[string]fieldMapping)
-	p.addField("PK", fieldMapping{source: "pk"})
+	p.addField("PK", fieldMapping{source: "pk", typ: "int"})
 	p.addField("IPN", fieldMapping{source: "IPN"})
 	p.addField("Name", fieldMapping{source: "name"})
 	p.addField("Keywords", fieldMapping{source: "keywords"})
@@ -169,7 +170,46 @@ func (p *InventreePlugin) Init(api KomPluginApi, args PluginArguments) error {
 	p.addField("Symbols", fieldMapping{source: "symbols", defaultValue: args["default_symbol"]})
 	p.addField("Footprints", fieldMapping{source: "footprints", defaultValue: args["default_footprint"]})
 
+	fields, ok := args["fields"]
+	if ok {
+		parsedFields, err := parseFields(fields)
+		if err != nil {
+			return err
+		}
+		for key, mapping := range parsedFields {
+			p.addField(key, mapping)
+		}
+	}
 	return nil
+}
+
+var fieldDefRegexp = regexp.MustCompile(`^(.+?):(\((.+?)\))?(.+?)(=(\((.+?)\))?(.*?))?$`)
+
+func parseFields(fields string) (map[string]fieldMapping, error) {
+	result := make(map[string]fieldMapping)
+	splitFields := strings.Split(fields, ",")
+
+	for _, fieldDef := range splitFields {
+		fieldDef = strings.TrimSpace(fieldDef)
+		parsedFieldDef := fieldDefRegexp.FindStringSubmatch(fieldDef)
+		if parsedFieldDef == nil {
+			return nil, fmt.Errorf("could not parse field `%s`", fieldDef)
+		}
+
+		defaultValue, err := Convert(parsedFieldDef[8], parsedFieldDef[7])
+		if err != nil {
+			return nil, err
+		}
+		field := fieldMapping{
+			source:       parsedFieldDef[4],
+			typ:          parsedFieldDef[3],
+			defaultValue: defaultValue,
+		}
+
+		result[parsedFieldDef[1]] = field
+	}
+
+	return result, nil
 }
 
 func (p *InventreePlugin) ColumnNames() []string {
