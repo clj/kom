@@ -10,7 +10,7 @@ import (
 )
 
 type fieldMapping struct {
-	source       string
+	source       []string
 	typ          string
 	defaultValue any
 }
@@ -28,6 +28,7 @@ type InventreePlugin struct {
 	categories    []int
 	fieldMappings map[string]fieldMapping
 	fields        []string
+	usesMetadata  bool
 }
 
 func (p *InventreePlugin) updateCategoryMapping() error {
@@ -61,6 +62,9 @@ func (p *InventreePlugin) updateCategories(categories []string) error {
 
 func (p *InventreePlugin) addField(name string, mapping fieldMapping) {
 	p.fieldMappings[name] = mapping
+	if mapping.source[0] == "metadata" {
+		p.usesMetadata = true
+	}
 	for _, v := range p.fields {
 		if v == name {
 			return
@@ -162,13 +166,13 @@ func (p *InventreePlugin) Init(api KomPluginApi, args PluginArguments) error {
 	}
 
 	p.fieldMappings = make(map[string]fieldMapping)
-	p.addField("PK", fieldMapping{source: "pk", typ: "int"})
-	p.addField("IPN", fieldMapping{source: "IPN"})
-	p.addField("Name", fieldMapping{source: "name"})
-	p.addField("Keywords", fieldMapping{source: "keywords"})
-	p.addField("Description", fieldMapping{source: "description"})
-	p.addField("Symbols", fieldMapping{source: "symbols", defaultValue: args["default_symbol"]})
-	p.addField("Footprints", fieldMapping{source: "footprints", defaultValue: args["default_footprint"]})
+	p.addField("PK", fieldMapping{source: []string{"pk"}, typ: "int"})
+	p.addField("IPN", fieldMapping{source: []string{"IPN"}})
+	p.addField("Name", fieldMapping{source: []string{"name"}})
+	p.addField("Keywords", fieldMapping{source: []string{"keywords"}})
+	p.addField("Description", fieldMapping{source: []string{"description"}})
+	p.addField("Symbols", fieldMapping{source: []string{"metadata", "kicad", "symbols"}, defaultValue: args["default_symbol"]})
+	p.addField("Footprints", fieldMapping{source: []string{"metadata", "kicad", "footprints"}, defaultValue: args["default_footprint"]})
 
 	fields, ok := args["fields"]
 	if ok {
@@ -201,7 +205,7 @@ func parseFields(fields string) (map[string]fieldMapping, error) {
 			return nil, err
 		}
 		field := fieldMapping{
-			source:       parsedFieldDef[4],
+			source:       strings.Split(parsedFieldDef[4], "."),
 			typ:          parsedFieldDef[3],
 			defaultValue: defaultValue,
 		}
@@ -222,7 +226,9 @@ func (p *InventreePlugin) CanFilter(column string) bool {
 
 func (p *InventreePlugin) GetParts(pkValue any) (Parts, error) {
 	type part map[string]any
+
 	var parts []part
+	var partMetadata map[string]any
 
 	if pkValue != nil {
 		var part = part{}
@@ -231,6 +237,12 @@ func (p *InventreePlugin) GetParts(pkValue any) (Parts, error) {
 			return nil, err
 		}
 		parts = append(parts, part)
+
+		if p.usesMetadata {
+			if err := p.apiGet(fmt.Sprintf("/api/part/%v/metadata", pkValue), nil, &partMetadata); err != nil {
+				return nil, err
+			}
+		}
 	} else {
 		args := make(map[string]string)
 		args["category"] = strconv.Itoa(p.categories[0]) // XXX: possible to filter multiple at the same time? or disallow multiple categories, or make multiple queries
@@ -244,7 +256,22 @@ func (p *InventreePlugin) GetParts(pkValue any) (Parts, error) {
 	for _, part := range parts {
 		partResult := make(Part)
 		for field, mapping := range p.fieldMappings {
-			value, ok := part[mapping.source]
+			var value any
+			var ok bool
+
+			switch mapping.source[0] {
+			case "metadata":
+				value = partMetadata
+				for _, key := range mapping.source {
+					value, ok = value.(map[string]any)[key]
+					if !ok {
+						break
+					}
+				}
+			default:
+				value, ok = part[mapping.source[0]]
+			}
+
 			if ok {
 				if mapping.typ != "" {
 					var err error

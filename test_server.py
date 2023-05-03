@@ -293,6 +293,18 @@ class MockHTTPRequestHandler(BaseHTTPRequestHandler):
             if part['pk'] == 30:
                 return part
 
+    def api_part_30_metadata(self, _, __):
+        return json.loads("""
+            {
+                "metadata": {
+                    "kicad": {
+                        "symbols": "symbol",
+                        "footprints": "footprint"
+                    }
+                }
+            }
+        """)
+
 
 if __name__ == "__main__":
     server_address = ('', 45454)

@@ -122,6 +122,12 @@ Where:
 * `default` - default value to return if the field is not present in InvenTree response
 * `default_type` - the type of the default value if it should not be a string
 
+The `source` field can access nested structures (mappings only) can be accessed using dot notation, e.g.: `metadata.kicad.footprints`. Use one of the following key prefixes to access other information:
+
+* `metadata.` - access data from the metadata table.
+
+When none of these prefixes are used, keys are looked up in the data returned by the Parts API.
+
 ### KiCad Configuration
 
 Create a `inventree.kicad_dbl` file with a valid configuration (see the [KiCad documentation on Database Libraries](https://docs.kicad.org/master/en/eeschema/eeschema.html#database-libraries)), e.g.:
