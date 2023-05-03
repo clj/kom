@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type fieldMapping struct {
@@ -249,28 +251,54 @@ func (p *InventreePlugin) GetParts(pkValue any) (Parts, error) {
 	if pkValue != nil {
 		var part = part{}
 
-		if err := p.apiGet(fmt.Sprintf("/api/part/%v/", pkValue), nil, &part); err != nil {
-			return nil, err
-		}
-		parts = append(parts, part)
-
-		if p.usesMetadata {
-			if err := p.apiGet(fmt.Sprintf("/api/part/%v/metadata", pkValue), nil, &partMetadata); err != nil {
-				return nil, err
+		getPart := func() error {
+			if err := p.apiGet(fmt.Sprintf("/api/part/%v/", pkValue), nil, &part); err != nil {
+				return err
 			}
+			parts = append(parts, part)
+
+			return nil
 		}
 
-		if p.usesParameters {
-			var rawPartParameters []map[string]any
-			args := make(map[string]string)
-			value, _ := Convert(pkValue, "string")
-			args["part"] = value.(string)
+		if p.usesMetadata || p.usesParameters {
+			g := new(errgroup.Group)
 
-			if err := p.apiGet("/api/part/parameter/", nil, &rawPartParameters); err != nil {
-				return nil, err
+			g.Go(getPart)
+
+			if p.usesMetadata {
+				g.Go(func() error {
+					if err := p.apiGet(fmt.Sprintf("/api/part/%v/metadata", pkValue), nil, &partMetadata); err != nil {
+						return err
+					}
+
+					return nil
+				})
 			}
 
-			partParameters = mangleParameters(rawPartParameters)
+			if p.usesParameters {
+				g.Go(func() error {
+					var rawPartParameters []map[string]any
+					args := make(map[string]string)
+					value, _ := Convert(pkValue, "string")
+					args["part"] = value.(string)
+
+					if err := p.apiGet("/api/part/parameter/", nil, &rawPartParameters); err != nil {
+						return err
+					}
+
+					partParameters = mangleParameters(rawPartParameters)
+
+					return nil
+				})
+			}
+
+			if err := g.Wait(); err != nil {
+				return nil, err
+			}
+		} else {
+			if err := getPart(); err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		args := make(map[string]string)
