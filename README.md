@@ -75,7 +75,11 @@ You can update these values at any time, though you will have to restart KiCad t
 Create one or more database libraries:
 
 ```sql
-CREATE VIRTUAL TABLE Resistors USING kom(plugin="inventree", settings="settings", categories="Resistors", default_symbol="Device:R", default_footprint="Resistor_SMD:R_0805_2012Metric", fields="Category:(int)category, Active:(int)active=(int)0, FullName:full_name, ClampingVoltage:parameters.Clamping Voltage"));
+CREATE VIRTUAL TABLE Resistors USING
+    kom(plugin="inventree", settings="settings",
+        categories="Resistors", default_symbol="Device:R",
+        default_footprint="Resistor_SMD:R_0805_2012Metric",
+        fields="Category:(int)category, Active:(int)active=(int)0, FullName:full_name, ClampingVoltage:parameters.Clamping Voltage"));
 ```
 
 Available options:
