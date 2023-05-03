@@ -194,6 +194,13 @@ func (p *InventreePlugin) GetParts(pkValue any) (Parts, error) {
 		for field, mapping := range p.fieldMappings {
 			value, ok := part[mapping.source]
 			if ok {
+				if mapping.typ != "" {
+					var err error
+					value, err = Convert(value, mapping.typ)
+					if err != nil {
+						return nil, err
+					}
+				}
 				partResult[field] = value
 			} else {
 				partResult[field] = mapping.defaultValue

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"go.riyazali.net/sqlite"
@@ -45,6 +46,50 @@ func GetValue(value sqlite.Value) any {
 	default:
 		panic(fmt.Sprintf("Unknown type %s", value.Type().String()))
 	}
+}
+
+func Convert(value any, t string) (any, error) {
+
+	switch t {
+	case "int":
+	case "float":
+	case "string":
+	default:
+		return nil, fmt.Errorf("Invalid destination type %s", t)
+
+	}
+
+	switch v := value.(type) {
+	case int64:
+		switch t {
+		case "int":
+			return v, nil
+		case "float":
+			return float64(v), nil
+		case "string":
+			return strconv.FormatInt(v, 10), nil
+		}
+	case float64:
+		switch t {
+		case "int":
+			return int64(v), nil
+		case "float":
+			return v, nil
+		case "string":
+			return strconv.FormatFloat(v, 'G', -1, 64), nil
+		}
+	case string:
+		switch t {
+		case "int":
+			return strconv.ParseInt(v, 0, 64)
+		case "float":
+			return strconv.ParseFloat(v, 64)
+		case "string":
+			return v, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Unknown source type %T for value %v", value, value)
 }
 
 func (api *PluginApi) Init(sqliteApi *sqlite.ExtensionApi, settingsTableName string) error {
