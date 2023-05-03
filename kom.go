@@ -287,6 +287,8 @@ func (c *KomCursor) Column(ctx *sqlite.VirtualTableContext, i int) error {
 		ctx.ResultFloat(value)
 	case string:
 		ctx.ResultText(value)
+	case nil:
+		ctx.ResultNull()
 	default:
 		return fmt.Errorf("unknown type: %T", value)
 	}
