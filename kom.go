@@ -44,7 +44,7 @@ func GetValue(value sqlite.Value) any {
 	case sqlite.SQLITE_TEXT:
 		return value.Text()
 	default:
-		panic(fmt.Sprintf("Unknown type %s", value.Type().String()))
+		panic(fmt.Sprintf("unknown type %s", value.Type().String()))
 	}
 }
 
@@ -87,9 +87,27 @@ func Convert(value any, t string) (any, error) {
 		case "string":
 			return v, nil
 		}
+	case bool:
+		switch t {
+		case "int":
+			if v {
+				return 1, nil
+			}
+			return 0, nil
+		case "float":
+			if v {
+				return 1.0, nil
+			}
+			return 0.0, nil
+		case "string":
+			if v {
+				return "1", nil
+			}
+			return "0", nil
+		}
 	}
 
-	return nil, fmt.Errorf("Unknown source type %T for value %v", value, value)
+	return nil, fmt.Errorf("unknown source type %T for value %v", value, value)
 }
 
 func (api *PluginApi) Init(sqliteApi *sqlite.ExtensionApi, settingsTableName string) error {
