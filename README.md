@@ -147,7 +147,7 @@ Create a `inventree.kicad_dbl` file with a valid configuration (see the [KiCad d
     "source": {
         "type": "odbc",
         "dsn": "inventree",
-        "timeout_seconds": 2,
+        "timeout_seconds": 2
     },
     "libraries": [
         {
