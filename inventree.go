@@ -321,7 +321,8 @@ func (p *InventreePlugin) GetParts(pkValue any) (Parts, error) {
 				value = partMetadata
 				for _, key := range mapping.source {
 					value, ok = value.(map[string]any)[key]
-					if !ok {
+					if !ok || value == nil {
+						ok = false
 						break
 					}
 				}
