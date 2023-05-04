@@ -20,7 +20,7 @@ type Parts []Part
 type KomPlugin interface {
 	Init(KomPluginApi, PluginArguments) error
 	ColumnNames() []string
-	GetParts(any) (Parts, error)
+	GetParts(string, any) (Parts, error)
 	CanFilter(string) bool
 }
 
@@ -362,11 +362,13 @@ func (c *KomCursor) Column(ctx *sqlite.VirtualTableContext, i int) error {
 }
 
 func (c *KomCursor) Filter(indexNumber int, indexString string, values ...sqlite.Value) error {
-	var pkValue any = nil
+	var filterValue any = nil
+	var filterColumn string
 	if len(values) != 0 {
-		pkValue = GetValue(values[0])
+		filterColumn = c.plugin.ColumnNames()[indexNumber]
+		filterValue = GetValue(values[0])
 	}
-	parts, err := c.plugin.GetParts(pkValue)
+	parts, err := c.plugin.GetParts(filterColumn, filterValue)
 	if err != nil {
 		return err
 	}

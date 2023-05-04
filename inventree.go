@@ -32,6 +32,7 @@ type InventreePlugin struct {
 	fields         []string
 	usesMetadata   bool
 	usesParameters bool
+	ipnToPkMap     map[string]any
 }
 
 func (p *InventreePlugin) updateCategoryMapping() error {
@@ -233,23 +234,46 @@ func mangleParameters(params []map[string]any) map[string]any {
 	return result
 }
 
+func (p *InventreePlugin) updateIpnToPkMap(parts []map[string]any) {
+	p.ipnToPkMap = make(map[string]any)
+
+	for _, part := range parts {
+		pk := part["pk"]
+		ipn := part["IPN"].(string)
+
+		p.ipnToPkMap[ipn] = pk
+	}
+}
+
 func (p *InventreePlugin) ColumnNames() []string {
 	return p.fields
 }
 
 func (p *InventreePlugin) CanFilter(column string) bool {
-	return column == "PK"
+	return column == "PK" || column == "IPN"
 }
 
-func (p *InventreePlugin) GetParts(pkValue any) (Parts, error) {
-	type part map[string]any
-
-	var parts []part
+func (p *InventreePlugin) GetParts(filterColumn string, filterValue any) (Parts, error) {
+	var parts []map[string]any
 	var partMetadata map[string]any
 	var partParameters map[string]any
 
-	if pkValue != nil {
-		var part = part{}
+	if filterValue != nil {
+		var pkValue any
+		switch filterColumn {
+		case "PK":
+			pkValue = filterValue
+		case "IPN":
+			var ok bool
+			if pkValue, ok = p.ipnToPkMap[filterValue.(string)]; !ok {
+				panic(fmt.Sprintf("no ipnToPkMap mapping for %v", filterValue)) // XXX: just fetch it if there wasn't one?
+			}
+
+		default:
+			panic(fmt.Sprintf("invalid filter column: %s", filterColumn))
+		}
+
+		var part = map[string]any{}
 
 		getPart := func() error {
 			if err := p.apiGet(fmt.Sprintf("/api/part/%v/", pkValue), nil, &part); err != nil {
@@ -307,6 +331,8 @@ func (p *InventreePlugin) GetParts(pkValue any) (Parts, error) {
 		if err := p.apiGet("/api/part/", args, &parts); err != nil {
 			return nil, err
 		}
+
+		p.updateIpnToPkMap(parts)
 	}
 
 	var result Parts

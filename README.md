@@ -100,6 +100,7 @@ Options specific to the **inventree** plugin:
 * `fields` (optional):
     * Define one or more additional fields to expose to KiCad, or redefine the default fields
     * Default fields are: PK, IPN, Name, Keywords, Description, Symbols, Footprints
+    * Both PK and IPN can be used in the `key` setting in the kicad_dbl file (see below.). However when IPN is used, it is recommended that ["Allow duplicate IPN" setting](https://docs.inventree.org/en/latest/settings/global/#main-settings) in InvenTree is set to false.
 
 If you need to reconfigure a table, simply `DROP TABLE ____` and recreate it with the desired options.
 
@@ -152,7 +153,7 @@ Create a `inventree.kicad_dbl` file with a valid configuration (see the [KiCad d
         {
             "name": "Resistors",
             "table": "Resistors",
-            "key": "PK",
+            "key": "IPN",
             "symbols": "Symbols",
             "footprints": "Footprints",
             "fields": [
@@ -166,7 +167,7 @@ Create a `inventree.kicad_dbl` file with a valid configuration (see the [KiCad d
                 },
                 {
                     "column": "Value",
-                    "name": "Name",
+                    "name": "Value",
                     "visible_on_add": true,
                     "visible_in_chooser": true,
                     "show_name": false
@@ -179,6 +180,15 @@ Create a `inventree.kicad_dbl` file with a valid configuration (see the [KiCad d
         }
     ]
 }
+```
+
+The above configuration would work well with a table that has been created with the following parameters:
+
+```sql
+CREATE VIRTUAL TABLE Resistors USING
+    kom(plugin=inventree, settings=settings,
+    categories="Resistors", default_symbol="Device:R",
+    fields="Value:parameters.Value")
 ```
 
 Add the library to KiCad:
