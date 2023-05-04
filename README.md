@@ -106,7 +106,6 @@ If you need to reconfigure a table, simply `DROP TABLE ____` and recreate it wit
 #### Caveats
 
 * You have to configure a default_symbol to get any sensible behaviour at the moment
-* It is not (currently) possible for a part to have different symbol than the default
 * Despite the configuration option `categories` being plural, only one category can be specified at a time for a table currently
 
 
