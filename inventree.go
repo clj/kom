@@ -171,7 +171,7 @@ func (p *InventreePlugin) Init(api KomPluginApi, args PluginArguments) error {
 	}
 
 	p.fieldMappings = make(map[string]fieldMapping)
-	p.addField("PK", fieldMapping{source: []string{"pk"}, typ: "int"})
+	p.addField("PK", fieldMapping{source: []string{"pk"}, typ: "string"})
 	p.addField("IPN", fieldMapping{source: []string{"IPN"}})
 	p.addField("Name", fieldMapping{source: []string{"name"}})
 	p.addField("Keywords", fieldMapping{source: []string{"keywords"}})
