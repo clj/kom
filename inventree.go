@@ -282,7 +282,7 @@ func (p *InventreePlugin) GetParts(pkValue any) (Parts, error) {
 					value, _ := Convert(pkValue, "string")
 					args["part"] = value.(string)
 
-					if err := p.apiGet("/api/part/parameter/", nil, &rawPartParameters); err != nil {
+					if err := p.apiGet("/api/part/parameter/", args, &rawPartParameters); err != nil {
 						return err
 					}
 
