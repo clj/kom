@@ -32,7 +32,11 @@ type InventreePlugin struct {
 	fields         []string
 	usesMetadata   bool
 	usesParameters bool
-	ipnToPkMap     map[string]any
+	// This cache isn't ideal because it never expires. However, for KiCad
+	// I don't think it matters much, since KiCad will refresh its full list
+	// of parts before individual parts can be selected, which means this
+	// cache should be up to date with what parts can actually be selected.
+	ipnToPkMap map[string]any
 }
 
 func (p *InventreePlugin) updateCategoryMapping() error {
@@ -245,6 +249,13 @@ func (p *InventreePlugin) updateIpnToPkMap(parts []map[string]any) {
 	}
 }
 
+func (p *InventreePlugin) fetchAllParts(parts *[]map[string]any) error {
+	args := make(map[string]string)
+	args["category"] = strconv.Itoa(p.categories[0]) // XXX: possible to filter multiple at the same time? or disallow multiple categories, or make multiple queries
+
+	return p.apiGet("/api/part/", args, parts)
+}
+
 func (p *InventreePlugin) ColumnNames() []string {
 	return p.fields
 }
@@ -264,10 +275,24 @@ func (p *InventreePlugin) GetParts(filterColumn string, filterValue any) (Parts,
 		case "PK":
 			pkValue = filterValue
 		case "IPN":
+			if p.ipnToPkMap == nil {
+				if err := p.fetchAllParts(&parts); err != nil {
+					return nil, err
+				}
+
+				p.updateIpnToPkMap(parts)
+			}
+
 			var ok bool
 			if pkValue, ok = p.ipnToPkMap[filterValue.(string)]; !ok {
-				panic(fmt.Sprintf("no ipnToPkMap mapping for %v", filterValue)) // XXX: just fetch it if there wasn't one?
+				return nil, nil
 			}
+
+			// XXX: could optimise away the next fetch of parts, since we should already
+			//      have had the the required part returned when fetching all parts.
+			//      but this is not a path that should ever be hit when fetching from KiCad.
+			//      This is mostly to make running manual queries not annoying.
+			parts = nil
 
 		default:
 			panic(fmt.Sprintf("invalid filter column: %s", filterColumn))
@@ -325,13 +350,7 @@ func (p *InventreePlugin) GetParts(filterColumn string, filterValue any) (Parts,
 			}
 		}
 	} else {
-		args := make(map[string]string)
-		args["category"] = strconv.Itoa(p.categories[0]) // XXX: possible to filter multiple at the same time? or disallow multiple categories, or make multiple queries
-
-		if err := p.apiGet("/api/part/", args, &parts); err != nil {
-			return nil, err
-		}
-
+		p.fetchAllParts(&parts)
 		p.updateIpnToPkMap(parts)
 	}
 
