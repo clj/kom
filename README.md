@@ -1,5 +1,13 @@
 # KiCad ODBC Middleware
 
+> **Warning**
+> This repository is archived, please see:
+>
+> * https://github.com/clj/kob
+> * https://github.com/clj/kom2 (also archived)
+>
+> For further development of this idea.
+
 An SQLite3 Virtual Table that can interface KiCad's Database Libraries to component libraries that don't speak SQL.
 
 ## Supported Backends
