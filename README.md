@@ -3,7 +3,6 @@
 > **Warning**
 > This repository is archived, please see:
 >
-> * https://github.com/clj/kob
 > * https://github.com/clj/kom2 (also archived)
 >
 > For further development of this idea.
